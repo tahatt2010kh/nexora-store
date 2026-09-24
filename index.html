@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXORA Store</title>
+<style>
+:root{--bg:#090b12;--card:#121725;--line:#273149;--text:#f5f7fb;--muted:#aab4c7;--accent:#7c5cff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#080a10,#111827);color:var(--text);font-family:Arial,sans-serif}
+header{padding:28px 6%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+.logo{font-size:28px;font-weight:800;letter-spacing:3px}.pill,button{border:0;border-radius:12px;padding:11px 15px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+main{max-width:1150px;margin:auto;padding:35px 6%}.hero{padding:28px 0 35px}.hero h1{font-size:clamp(34px,6vw,70px);margin:0 0 12px}.hero p{color:var(--muted);max-width:620px;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}.card,.panel{background:rgba(18,23,37,.94);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 12px 35px #0003}.product-image{height:170px;border-radius:14px;background:#20283a;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#8e9ab1;font-size:45px}.product-image img{width:100%;height:100%;object-fit:cover}.price{font-size:22px;font-weight:800;margin:12px 0}.muted{color:var(--muted)}input,textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0d1220;color:#fff;margin:7px 0 12px}label{font-size:13px;color:var(--muted)}.hidden{display:none}.actions{display:flex;gap:8px;flex-wrap:wrap}.danger{background:#b4233c}.secondary{background:#29344b}.notice{margin:12px 0;padding:12px;border-radius:10px;background:#17243a;color:#dbe7ff}
+footer{padding:35px 6%;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<header><div class="logo">NEXORA</div><button class="pill" onclick="showAdmin()">Admin</button></header>
+<main>
+<section class="hero"><h1>Discover something new.</h1><p>Browse available products and send an order request. Only the store owner can add products.</p></section>
+<section><h2>Products</h2><div id="products" class="grid"></div></section>
+
+<section id="orderPanel" class="panel hidden" style="margin-top:25px">
+<h2>Place an order</h2><form id="orderForm">
+<input type="hidden" id="product_id">
+<label>Your name *</label><input id="customer_name" required>
+<label>Phone *</label><input id="phone" required>
+<label>Country *</label><input id="country" required>
+<label>Address *</label><textarea id="address" required></textarea>
+<label>Postal code</label><input id="postal_code">
+<label>Shipping method *</label><select id="shipping_method" required><option value="">Choose</option><option>Post</option><option>Tipax</option><option>Other</option></select>
+<label>Note</label><textarea id="customer_note"></textarea>
+<button type="submit">Send order</button>
+<button type="button" class="secondary" onclick="closeOrder()">Close</button>
+</form><div id="orderMsg"></div></section>
+
+<section id="adminPanel" class="panel hidden" style="margin-top:25px">
+<h2>Admin panel</h2>
+<div id="loginBox">
+<label>Username</label><input id="username" value="admin">
+<label>Password</label><input id="password" type="password">
+<button onclick="login()">Login</button>
+</div>
+<div id="dashboard" class="hidden">
+<h3>Add product</h3>
+<form id="productForm">
+<label>Name *</label><input id="name" required>
+<label>Price *</label><input id="price" required placeholder="Example: 25 USD">
+<label>Image URL (optional)</label><input id="image_url">
+<label>Description</label><textarea id="description"></textarea>
+<button type="submit">Add product</button>
+</form>
+<div class="actions" style="margin-top:12px"><button class="secondary" onclick="loadOrders()">Refresh orders</button><button class="danger" onclick="logout()">Logout</button></div>
+<div id="adminMsg"></div><div id="orders"></div>
+</div>
+</section>
+</main>
+<footer>NEXORA · Store starter</footer>
+<script>
+const $=id=>document.getElementById(id);
+async function loadProducts(){
+ const res=await fetch('/api/products'); const items=await res.json();
+ $('products').innerHTML=items.length?items.map(p=>`
+ <article class="card">
+  <div class="product-image">${p.image_url?`<img src="${escapeHtml(p.image_url)}" alt="">`:'📦'}</div>
+  <h3>${escapeHtml(p.name)}</h3><div class="price">${escapeHtml(p.price)}</div>
+  <p class="muted">${escapeHtml(p.description||'')}</p>
+  <div class="actions"><button onclick="openOrder(${p.id})">Order</button></div>
+ </article>`).join(''):'<p class="muted">No products yet. The owner can add products from Admin.</p>';
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function openOrder(id){$('product_id').value=id;$('orderPanel').classList.remove('hidden');window.scrollTo({top:$('orderPanel').offsetTop,behavior:'smooth'});}
+function closeOrder(){$('orderPanel').classList.add('hidden');}
+$('orderForm').addEventListener('submit',async e=>{
+ e.preventDefault();const data={product_id:Number($('product_id').value),customer_name:$('customer_name').value,phone:$('phone').value,country:$('country').value,address:$('address').value,postal_code:$('postal_code').value,shipping_method:$('shipping_method').value,customer_note:$('customer_note').value};
+ const r=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const j=await r.json();$('orderMsg').textContent=r.ok?'Order sent. Order number: '+j.order_id:j.error||'Could not send order';if(r.ok)e.target.reset();
+});
+function showAdmin(){$('adminPanel').classList.remove('hidden');window.scrollTo({top:$('adminPanel').offsetTop,behavior:'smooth'});}
+async function login(){const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value,password:$('password').value})});const j=await r.json();if(r.ok){$('loginBox').classList.add('hidden');$('dashboard').classList.remove('hidden');loadOrders();}else $('adminMsg').textContent=j.error||'Login failed';}
+async function logout(){await fetch('/api/admin/logout',{method:'POST'});$('dashboard').classList.add('hidden');$('loginBox').classList.remove('hidden');}
+$('productForm').addEventListener('submit',async e=>{
+ e.preventDefault();const data={name:$('name').value,price:$('price').value,image_url:$('image_url').value,description:$('description').value};
+ const r=await fetch('/api/admin/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const j=await r.json();$('adminMsg').textContent=r.ok?'Product added.':'Error: '+(j.error||'failed');if(r.ok){e.target.reset();loadProducts();loadOrders();}
+});
+async function loadOrders(){const r=await fetch('/api/admin/orders');if(!r.ok)return;const items=await r.json();$('orders').innerHTML='<h3>Orders</h3>'+(items.length?items.map(o=>`<div class="card" style="margin:10px 0"><b>#${o.id} · ${escapeHtml(o.product_name)}</b><p class="muted">${escapeHtml(o.customer_name)} · ${escapeHtml(o.phone)} · ${escapeHtml(o.country)}</p><p>${escapeHtml(o.address)}</p><p>Status: ${escapeHtml(o.status)}</p></div>`).join(''):'<p class="muted">No orders yet.</p>';}
+loadProducts();
+</script>
+</body>
+</html>
