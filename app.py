@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "nexora.db")
 
-app = Flask(__name__, static_folder="frontend", static_url_path="")
+app = Flask(__name__, static_folder=".", static_url_path="")
 app.secret_key = os.environ.get("SECRET_KEY", "replace-this-secret-before-public-launch")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
